@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>🎮 NumGuess — Number Guessing Game</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Share+Tech+Mono&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet"/>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#06070f;--card:#0c0e20;--border:#181c38;
+  --green:#00ffaa;--red:#ff3355;--gold:#ffc800;
+  --blue:#00aaff;--purple:#aa44ff;--orange:#ff8800;
+  --text:#c8d8ff;--dim:#2e3560;
+}
+html,body{height:100%;font-family:'Rajdhani',sans-serif;color:var(--text)}
+body{
+  background:var(--bg);
+  display:flex;align-items:center;justify-content:center;
+  min-height:100vh;overflow-x:hidden;
+}
+
+/* ── ANIMATED GRID BG ── */
+.bg{position:fixed;inset:0;z-index:0;pointer-events:none}
+.bg::before{
+  content:'';position:absolute;inset:0;
+  background:
+    linear-gradient(rgba(0,170,255,.05) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(0,170,255,.05) 1px,transparent 1px);
+  background-size:48px 48px;
+  animation:bgScroll 18s linear infinite;
+}
+.bg::after{
+  content:'';position:absolute;inset:0;
+  background:radial-gradient(ellipse 80% 60% at 50% 0%,rgba(0,170,255,.07),transparent),
+             radial-gradient(ellipse 60% 60% at 0% 100%,rgba(170,68,255,.06),transparent),
+             radial-gradient(ellipse 60% 60% at 100% 100%,rgba(0,255,170,.05),transparent);
+}
+@keyframes bgScroll{to{background-position:48px 48px}}
+
+/* ── WRAPPER ── */
+.wrap{position:relative;z-index:1;width:100%;max-width:460px;padding:16px}
+
+/* ── HEADER ── */
+.hdr{text-align:center;margin-bottom:20px}
+.logo{
+  font-family:'Orbitron',monospace;font-size:2rem;font-weight:900;
+  letter-spacing:6px;color:var(--blue);
+  text-shadow:0 0 30px rgba(0,170,255,.7),0 0 60px rgba(0,170,255,.3);
+  animation:logoPulse 3s ease-in-out infinite;
+}
+@keyframes logoPulse{
+  0%,100%{text-shadow:0 0 20px rgba(0,170,255,.5)}
+  50%{text-shadow:0 0 40px rgba(0,170,255,.9),0 0 80px rgba(0,170,255,.4)}
+}
+.logo span{color:var(--green)}
+.tagline{
+  font-family:'Share Tech Mono',monospace;
+  font-size:.65rem;letter-spacing:5px;color:var(--dim);margin-top:5px;
+}
+
+/* ── CARD ── */
+.card{
+  background:var(--card);
+  border:1px solid var(--border);
+  border-radius:20px;
+  padding:26px 22px;
+  position:relative;overflow:hidden;
+  box-shadow:0 0 100px rgba(0,0,0,.9),
+             inset 0 1px 0 rgba(255,255,255,.04),
+             inset 0 -1px 0 rgba(255,255,255,.02);
+}
+/* top rainbow scan line */
+.card::before{
+  content:'';position:absolute;top:0;left:0;right:0;height:2px;
+  background:linear-gradient(90deg,
+    transparent 0%,var(--blue) 25%,var(--purple) 50%,
+    var(--green) 75%,transparent 100%);
+  animation:scan 3s ease-in-out infinite;
+}
+@keyframes scan{0%,100%{opacity:.5}50%{opacity:1}}
+
+/* ── STAT ROW ── */
+.stats{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:18px}
+.stat{
+  background:rgba(255,255,255,.03);
+  border:1px solid var(--border);border-radius:10px;
+  padding:10px 6px;text-align:center;
+}
+.stat-lbl{font-family:'Share Tech Mono',monospace;font-size:.58rem;letter-spacing:2px;color:var(--dim)}
+.stat-val{
+  font-family:'Orbitron',monospace;font-size:1.4rem;font-weight:700;margin-top:2px;
+}
+.c-green{color:var(--green);text-shadow:0 0 14px rgba(0,255,170,.5)}
+.c-blue {color:var(--blue); text-shadow:0 0 14px rgba(0,170,255,.5)}
+.c-gold {color:var(--gold); text-shadow:0 0 14px rgba(255,200,0,.5)}
+
+/* ── RANGE ── */
+.sec-lbl{font-family:'Share Tech Mono',monospace;font-size:.6rem;letter-spacing:3px;color:var(--dim);margin-bottom:7px}
+.range-track{height:7px;background:var(--border);border-radius:4px;position:relative;margin-bottom:5px;overflow:hidden}
+.range-fill{
+  position:absolute;top:0;height:100%;border-radius:4px;
+  background:linear-gradient(90deg,var(--green),var(--blue));
+  box-shadow:0 0 10px rgba(0,200,255,.4);
+  transition:left .5s ease,width .5s ease;
+}
+.range-nums{display:flex;justify-content:space-between;font-family:'Share Tech Mono',monospace;font-size:.68rem;margin-bottom:16px}
+#rLow{color:var(--green)}#rHigh{color:var(--red)}
+
+/* ── DOTS ── */
+.dots{display:flex;gap:5px;margin-bottom:18px}
+.dot{
+  flex:1;height:7px;border-radius:3px;background:var(--border);
+  transition:all .35s cubic-bezier(.175,.885,.32,1.275);
+}
+.dot.used{background:var(--red);box-shadow:0 0 7px rgba(255,51,85,.5)}
+.dot.won {background:var(--green);box-shadow:0 0 7px rgba(0,255,170,.5)}
+
+/* ── MESSAGE ── */
+.msg{
+  border-radius:10px;padding:12px 14px;
+  display:flex;align-items:center;gap:10px;
+  min-height:50px;margin-bottom:18px;
+  border:1px solid var(--border);
+  background:rgba(255,255,255,.03);
+  transition:all .3s;font-size:.95rem;font-weight:600;
+}
+.msg.info  {border-color:#00aaff44;background:rgba(0,170,255,.07)}
+.msg.low   {border-color:#00ffaa44;background:rgba(0,255,170,.07)}
+.msg.high  {border-color:#ff880044;background:rgba(255,136,0,.07)}
+.msg.win   {border-color:#ffc80044;background:rgba(255,200,0,.08);animation:msgGlow 1.5s ease-in-out infinite}
+.msg.lose  {border-color:#ff335544;background:rgba(255,51,85,.07)}
+@keyframes msgGlow{0%,100%{box-shadow:none}50%{box-shadow:0 0 20px rgba(255,200,0,.2)}}
+.msg-icon{font-size:1.3rem;flex-shrink:0}
+
+/* ── INPUT ── */
+.input-row{display:flex;gap:8px;margin-bottom:18px}
+.inp{
+  flex:1;background:rgba(255,255,255,.04);
+  border:1px solid var(--border);border-radius:10px;
+  padding:13px 14px;font-family:'Orbitron',monospace;
+  font-size:1.2rem;font-weight:700;letter-spacing:4px;
+  color:var(--text);text-align:center;outline:none;
+  transition:all .3s;-moz-appearance:textfield;
+}
+.inp::-webkit-outer-spin-button,.inp::-webkit-inner-spin-button{-webkit-appearance:none}
+.inp:focus{border-color:var(--blue);box-shadow:0 0 0 2px rgba(0,170,255,.15);background:rgba(0,170,255,.05)}
+.inp::placeholder{color:var(--dim);font-size:.85rem;letter-spacing:2px}
+.inp:disabled{opacity:.3}
+
+.btn{
+  padding:13px 18px;font-family:'Orbitron',monospace;
+  font-size:.65rem;font-weight:900;letter-spacing:2px;
+  border:none;border-radius:10px;cursor:pointer;
+  transition:all .2s;text-transform:uppercase;
+}
+.btn-go{
+  background:linear-gradient(135deg,#0055bb,#00aaff);
+  color:#fff;box-shadow:0 4px 18px rgba(0,100,220,.4);
+}
+.btn-go:hover:not(:disabled){transform:translateY(-2px);box-shadow:0 6px 26px rgba(0,100,220,.6)}
+.btn-go:active{transform:translateY(0)}
+.btn-go:disabled{opacity:.3;cursor:not-allowed}
+.btn-rst{
+  background:rgba(255,255,255,.05);color:var(--dim);
+  border:1px solid var(--border);font-size:.9rem;
+}
+.btn-rst:hover{background:rgba(255,255,255,.1);color:var(--text)}
+
+/* ── HISTORY ── */
+.history{display:flex;flex-wrap:wrap;gap:6px;min-height:32px}
+.chip{
+  font-family:'Orbitron',monospace;font-size:.68rem;font-weight:700;
+  padding:4px 10px;border-radius:6px;
+  animation:chipPop .3s cubic-bezier(.175,.885,.32,1.275);
+}
+@keyframes chipPop{from{opacity:0;transform:scale(.5)}to{opacity:1;transform:scale(1)}}
+.chip.low    {background:rgba(0,255,170,.1);color:var(--green);border:1px solid rgba(0,255,170,.25)}
+.chip.high   {background:rgba(255,136,0,.1);color:var(--orange);border:1px solid rgba(255,136,0,.25)}
+.chip.correct{background:rgba(255,200,0,.12);color:var(--gold);border:1px solid rgba(255,200,0,.35)}
+
+/* ── SHAKE ── */
+@keyframes shake{0%,100%{transform:translateX(0)}20%{transform:translateX(-8px)}40%{transform:translateX(8px)}60%{transform:translateX(-5px)}80%{transform:translateX(5px)}}
+.shake{animation:shake .35s ease}
+
+/* ── OVERLAY ── */
+.overlay{
+  position:fixed;inset:0;z-index:100;
+  display:flex;align-items:center;justify-content:center;
+  opacity:0;pointer-events:none;transition:opacity .4s;
+}
+.overlay.show{opacity:1;pointer-events:all}
+.ov-bg{position:absolute;inset:0;background:rgba(6,7,15,.9);backdrop-filter:blur(12px)}
+.ov-box{
+  position:relative;z-index:1;
+  background:var(--card);border:1px solid var(--border);
+  border-radius:22px;padding:38px 32px;text-align:center;
+  max-width:340px;width:90%;
+  box-shadow:0 0 120px rgba(0,0,0,.95);
+  animation:popIn .5s cubic-bezier(.175,.885,.32,1.275);
+}
+@keyframes popIn{from{transform:scale(.65);opacity:0}}
+.ov-emoji{font-size:3.5rem;display:block;margin-bottom:10px}
+.ov-title{font-family:'Orbitron',monospace;font-size:1.5rem;font-weight:900;letter-spacing:3px;margin-bottom:8px}
+.ov-title.wt{color:var(--gold);text-shadow:0 0 20px rgba(255,200,0,.6)}
+.ov-title.lt{color:var(--red); text-shadow:0 0 20px rgba(255,51,85,.5)}
+.ov-lbl{font-size:.9rem;color:#6677aa;margin-bottom:4px}
+.ov-num{
+  font-family:'Orbitron',monospace;font-size:3rem;font-weight:900;
+  color:var(--blue);text-shadow:0 0 20px rgba(0,170,255,.7);margin:8px 0 6px;
+}
+.ov-sub{font-size:.85rem;color:var(--dim);margin-bottom:22px}
+.btn-again{
+  background:linear-gradient(135deg,var(--green),#00cc88);
+  color:#000;font-family:'Orbitron',monospace;
+  font-size:.7rem;font-weight:900;letter-spacing:2px;
+  padding:13px 30px;border:none;border-radius:10px;
+  cursor:pointer;transition:all .2s;
+}
+.btn-again:hover{transform:translateY(-3px);box-shadow:0 8px 28px rgba(0,255,170,.4)}
+
+/* ── CONFETTI PIECE ── */
+.cp{
+  position:fixed;z-index:200;pointer-events:none;
+  border-radius:2px;animation:fall linear forwards;
+}
+@keyframes fall{0%{opacity:1;transform:translateY(-10px) rotate(0)}100%{opacity:0;transform:translateY(105vh) rotate(720deg)}}
+
+/* ── RESPONSIVE ── */
+@media(max-width:420px){
+  .logo{font-size:1.5rem;letter-spacing:3px}
+  .card{padding:18px 14px}
+  .stat-val{font-size:1.1rem}
+}
+</style>
+</head>
+<body>
+<div class="bg"></div>
+
+<div class="wrap">
+  <div class="hdr">
+    <div class="logo">NUM<span>GUESS</span></div>
+    <div class="tagline">GUESS THE NUMBER · 10 CHANCES · 1 TO 100</div>
+  </div>
+
+  <div class="card">
+
+    <!-- Stats -->
+    <div class="stats">
+      <div class="stat">
+        <div class="stat-lbl">SCORE</div>
+        <div class="stat-val c-gold" id="sScore">000</div>
+      </div>
+      <div class="stat">
+        <div class="stat-lbl">ATTEMPT</div>
+        <div class="stat-val c-blue" id="sAttempt">0/10</div>
+      </div>
+      <div class="stat">
+        <div class="stat-lbl">BEST</div>
+        <div class="stat-val c-green" id="sBest">—</div>
+      </div>
+    </div>
+
+    <!-- Range -->
+    <div class="sec-lbl">POSSIBLE RANGE</div>
+    <div class="range-track"><div class="range-fill" id="rangeFill"></div></div>
+    <div class="range-nums">
+      <span id="rLow">1</span>
+      <span style="color:var(--dim);font-size:.6rem">narrowing down...</span>
+      <span id="rHigh">100</span>
+    </div>
+
+    <!-- Attempt dots -->
+    <div class="sec-lbl">ATTEMPTS USED</div>
+    <div class="dots" id="dots"></div>
+
+    <!-- Message -->
+    <div class="msg info" id="msg">
+      <span class="msg-icon">🎯</span>
+      <span id="msgTxt">1 se 100 ke beech koi bhi number guess karo!</span>
+    </div>
+
+    <!-- Input -->
+    <div class="input-row">
+      <input type="number" min="1" max="100" class="inp"
+             id="inp" placeholder="1 – 100" autocomplete="off"/>
+      <button class="btn btn-go" id="btnGuess" onclick="guess()">GUESS</button>
+      <button class="btn btn-rst" onclick="reset()" title="New game">↺</button>
+    </div>
+
+    <!-- History -->
+    <div class="sec-lbl">GUESS HISTORY</div>
+    <div class="history" id="hist"></div>
+
+  </div><!-- /card -->
+</div><!-- /wrap -->
+
+<!-- Overlay -->
+<div class="overlay" id="overlay">
+  <div class="ov-bg" onclick="closeOv()"></div>
+  <div class="ov-box">
+    <span class="ov-emoji" id="ovEmoji">🏆</span>
+    <div class="ov-title" id="ovTitle">YOU WIN!</div>
+    <div class="ov-lbl" id="ovLbl">Secret number tha:</div>
+    <div class="ov-num" id="ovNum">?</div>
+    <div class="ov-sub" id="ovSub"></div>
+    <button class="btn-again" onclick="reset()">▶ PLAY AGAIN</button>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════
+//         script.js
+// ═══════════════════════════════
+
+const MAX = 10;
+let secret, attempts, over, low, high, best;
+
+function init(){
+  secret   = Math.floor(Math.random()*100)+1;
+  attempts = 0; over = false;
+  low = 1; high = 100;
+  if(best === undefined) best = Infinity;
+
+  $('inp').value=''; $('inp').disabled=false;
+  $('btnGuess').disabled=false;
+  $('hist').innerHTML='';
+  $('overlay').classList.remove('show');
+
+  buildDots(); updateDots();
+  updateStats(); updateRange();
+  setMsg('info','🎯','1 se 100 ke beech koi bhi number guess karo!');
+  $('inp').focus();
+}
+
+function $(...a){
+  const r=a.map(id=>document.getElementById(id));
+  return r.length===1?r[0]:r;
+}
+
+// ── DOTS ──────────────────────────────────
+function buildDots(){
+  const c=$('dots'); c.innerHTML='';
+  for(let i=0;i<MAX;i++){
+    const d=document.createElement('div');
+    d.className='dot'; d.id='d'+i; c.appendChild(d);
+  }
+}
+function updateDots(winAt=-1){
+  for(let i=0;i<MAX;i++){
+    const d=$('d'+i); d.className='dot';
+    if(winAt>=0 && i<winAt) d.classList.add('won');
+    else if(winAt<0 && i<attempts) d.classList.add('used');
+  }
+}
+
+// ── STATS ─────────────────────────────────
+function updateStats(){
+  $('sAttempt').textContent=`${attempts}/${MAX}`;
+  const sc=attempts===0?0:Math.max(0,(MAX-attempts+1)*110);
+  $('sScore').textContent=String(sc).padStart(3,'0');
+  $('sBest').textContent=best===Infinity?'—':best;
+}
+function score(){return Math.max(0,(MAX-attempts+1)*110)}
+
+// ── RANGE BAR ─────────────────────────────
+function updateRange(){
+  const lp=((low-1)/100)*100, wp=((high-low)/100)*100;
+  const f=$('rangeFill');
+  f.style.left=lp+'%'; f.style.width=wp+'%';
+  $('rLow').textContent=low; $('rHigh').textContent=high;
+}
+
+// ── MESSAGE ───────────────────────────────
+function setMsg(type,icon,html){
+  const b=$('msg'); b.className='msg '+type;
+  b.innerHTML=`<span class="msg-icon">${icon}</span><span>${html}</span>`;
+}
+
+// ── MAIN GUESS LOGIC ─────────────────────
+function guess(){
+  if(over) return;
+  const inp=$('inp'), v=parseInt(inp.value);
+
+  if(!inp.value||isNaN(v)||v<1||v>100){
+    inp.classList.remove('shake');
+    void inp.offsetWidth;
+    inp.classList.add('shake');
+    setMsg('info','⚠️','Sirf 1 se 100 ke beech ka number daalo!');
+    return;
+  }
+
+  attempts++;
+  addChip(v);
+  inp.value=''; inp.focus();
+  updateDots(); updateStats();
+
+  // ── CORRECT ──
+  if(v===secret){
+    over=true;
+    if(attempts<best) best=attempts;
+    $('inp').disabled=true; $('btnGuess').disabled=true;
+    updateDots(attempts);
+    updateStats();
+    setMsg('win','🎉',`<b>${v}</b> — SAHI HAI! Score: <b>${score()}</b> 🏆`);
+    setTimeout(()=>showOv(true),600);
+    confetti();
+    return;
+  }
+
+  const left=MAX-attempts;
+
+  // ── WRONG ──
+  if(v<secret){
+    low=Math.max(low,v+1); updateRange();
+    left>0
+      ? setMsg('low','📈',`<b>${v}</b> — TOO LOW! Bada number try karo. <b>${left}</b> chances bache.`)
+      : null;
+  } else {
+    high=Math.min(high,v-1); updateRange();
+    left>0
+      ? setMsg('high','📉',`<b>${v}</b> — TOO HIGH! Chota number try karo. <b>${left}</b> chances bache.`)
+      : null;
+  }
+
+  // ── GAME OVER ──
+  if(attempts>=MAX){
+    over=true;
+    $('inp').disabled=true; $('btnGuess').disabled=true;
+    setMsg('lose','💀',`GAME OVER! Sahi number tha: <b>${secret}</b>`);
+    setTimeout(()=>showOv(false),600);
+  }
+}
+
+// ── CHIP ──────────────────────────────────
+function addChip(v){
+  const h=$('hist'), c=document.createElement('div');
+  const cls = v===secret?'correct':v<secret?'low':'high';
+  const arrow = v===secret?'✓':v<secret?'↑':'↓';
+  c.className=`chip ${cls}`; c.textContent=`${v} ${arrow}`;
+  h.appendChild(c);
+}
+
+// ── OVERLAY ───────────────────────────────
+function showOv(won){
+  $('ovEmoji').textContent = won?'🏆':'💀';
+  $('ovTitle').className   = `ov-title ${won?'wt':'lt'}`;
+  $('ovTitle').textContent = won?'YOU WIN!':'GAME OVER!';
+  $('ovLbl').textContent   = won?`Sirf ${attempts} attempt mein! Number tha:`:'Number tha:';
+  $('ovNum').textContent   = secret;
+  $('ovSub').textContent   = won
+    ? `Score: ${score()} | Best: ${best} attempts`
+    : 'Score: 0 — Agli baar try karna!';
+  $('overlay').classList.add('show');
+}
+function closeOv(){ $('overlay').classList.remove('show') }
+
+// ── CONFETTI ──────────────────────────────
+function confetti(){
+  const cols=['#00ffaa','#ffc800','#00aaff','#ff3355','#aa44ff','#ff8800'];
+  for(let i=0;i<90;i++){
+    setTimeout(()=>{
+      const c=document.createElement('div');
+      c.className='cp';
+      c.style.cssText=`
+        left:${Math.random()*100}vw;top:-16px;
+        width:${6+Math.random()*10}px;height:${6+Math.random()*10}px;
+        background:${cols[Math.floor(Math.random()*cols.length)]};
+        animation-duration:${1.6+Math.random()*2.5}s;
+      `;
+      document.body.appendChild(c);
+      setTimeout(()=>c.remove(),4200);
+    },i*22);
+  }
+}
+
+// ── RESET ─────────────────────────────────
+function reset(){ init() }
+
+// ── ENTER KEY ─────────────────────────────
+document.addEventListener('keydown',e=>{ if(e.key==='Enter') guess() });
+
+// ── START ─────────────────────────────────
+init();
+</script>
+</body>
+</html>
